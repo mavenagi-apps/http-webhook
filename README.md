@@ -1,141 +1,212 @@
-# HTTP Webhook App for Maven AGI
+# HTTP Webhook App
 
-A generic HTTP webhook app that supports both **LLM-invoked actions** and **event-triggered webhooks**.
+Send HTTP requests to external endpoints from your Maven agent. Configure webhooks that fire when the AI decides to take an action, or automatically when Maven events occur (like feedback or conversation created).
 
-## Features
-
-- **Dual-mode operation**: LLM decides when to call webhooks OR webhooks fire automatically on Maven events
-- **Template interpolation**: Use `{{variable.path}}` syntax in URLs, headers, and body templates
-- **Multiple webhooks**: Configure any number of webhooks per installation
-- **Event triggers**: Fire webhooks on feedback, conversation creation, and more
+---
 
 ## Installation
 
-Configure the app with a `webhooks` array in settings.
+1. Go to your Maven agent's **Apps** section
+2. Find and install the **HTTP Webhook** app
+3. Configure your webhooks in the settings form (see below)
+
+---
+
+## How It Works
+
+This app supports two trigger modes:
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| **LLM Action** | AI decides when to call the webhook based on conversation context | "Create a support ticket", "Send to Slack" |
+| **Event Trigger** | Webhook fires automatically on Maven events | Send all feedback to analytics, sync conversations |
+
+---
 
 ## Configuration
 
-### LLM-Invoked Action Example
+When installing the app, you'll configure one or more webhooks:
 
-The LLM will decide when to invoke this action based on the description:
+### Webhook Fields
 
-```json
-{
-  "webhooks": [
-    {
-      "name": "create_support_ticket",
-      "description": "Create a support ticket when the user has an unresolved issue that needs human assistance",
-      "triggerMode": "llm_action",
-      "url": "https://api.example.com/tickets",
-      "method": "POST",
-      "headers": {
-        "Authorization": "Bearer {{settings.apiKey}}",
-        "Content-Type": "application/json"
-      },
-      "bodyTemplate": "{\"title\": \"{{parameters.title}}\", \"description\": \"{{parameters.description}}\", \"user_email\": \"{{user.email}}\"}",
-      "userFormParameters": [
-        {"id": "title", "label": "Issue Title", "required": true},
-        {"id": "description", "label": "Issue Description", "required": true}
-      ]
-    }
-  ],
-  "apiKey": "your-api-key-here"
-}
-```
+| Field | Required | Description |
+|-------|----------|-------------|
+| **Name** | Yes | Unique identifier (e.g., `send_to_slack`) |
+| **Description** | Yes | For LLM actions: tells AI when to use this webhook |
+| **Trigger Mode** | Yes | `llm_action` or `event_trigger` |
+| **Event Type** | For triggers | Which event fires this webhook |
+| **URL** | Yes | The HTTP endpoint to call |
+| **HTTP Method** | Yes | GET, POST, PUT, PATCH, or DELETE |
+| **API Key** | No | Secret key available as `{{webhook.apiKey}}` |
+| **Headers** | No | JSON object with HTTP headers |
+| **Body Template** | No | Request body with variable interpolation |
+| **Timeout** | No | Request timeout in milliseconds (default: 30000) |
 
-### Event-Triggered Webhook Example
-
-This webhook fires automatically when feedback is submitted:
-
-```json
-{
-  "webhooks": [
-    {
-      "name": "send_feedback_to_analytics",
-      "description": "Sends all feedback to our analytics pipeline",
-      "triggerMode": "event_trigger",
-      "eventType": "feedback_created",
-      "url": "https://analytics.example.com/feedback",
-      "method": "POST",
-      "headers": {
-        "Authorization": "Bearer {{settings.analyticsApiKey}}",
-        "Content-Type": "application/json"
-      },
-      "bodyTemplate": "{\"feedback_type\": \"{{feedback.type}}\", \"feedback_text\": \"{{feedback.text}}\", \"conversation_id\": \"{{conversationId.referenceId}}\"}"
-    }
-  ],
-  "analyticsApiKey": "your-analytics-key"
-}
-```
-
-## Supported Event Types
-
-| Event Type | Description |
-|------------|-------------|
-| `feedback_created` | Fires when user submits feedback (thumbs up/down, etc.) |
-| `conversation_created` | Fires when a new conversation starts |
-| `event_created` | Fires on generic Maven events |
-| `inbox_item_created` | Fires when inbox items are created |
+---
 
 ## Variable Interpolation
 
-### For LLM Actions
+Use `{{variable}}` syntax in your URL, headers, and body template:
 
-| Variable | Description |
-|----------|-------------|
-| `{{user.email}}` | User's email address |
-| `{{user.*}}` | Other user data from `defaultUserData` |
-| `{{parameters.fieldName}}` | Form field values from `userFormParameters` |
-| `{{settings.key}}` | App settings values (API keys, etc.) |
-| `{{conversationId.referenceId}}` | Conversation reference ID |
-| `{{metadata.key}}` | Conversation metadata |
+### Available Variables
 
-### For Event Triggers
+| Variable | Available In | Description |
+|----------|--------------|-------------|
+| `{{user.email}}` | LLM Actions | User's email address |
+| `{{user.firstName}}` | LLM Actions | User's first name |
+| `{{user.lastName}}` | LLM Actions | User's last name |
+| `{{parameters.fieldName}}` | LLM Actions | Values from action form fields |
+| `{{webhook.apiKey}}` | All | The webhook's API key |
+| `{{feedback.type}}` | Feedback Triggers | THUMBS_UP, THUMBS_DOWN, INSERT, HANDOFF |
+| `{{feedback.text}}` | Feedback Triggers | Feedback comment text |
+| `{{feedback.id}}` | Feedback Triggers | Feedback ID |
+| `{{conversationId.referenceId}}` | All | Conversation ID |
+| `{{organizationId}}` | All | Organization ID |
+| `{{agentId}}` | All | Agent ID |
 
-| Variable | Description |
-|----------|-------------|
-| `{{feedback.type}}` | Feedback type: THUMBS_UP, THUMBS_DOWN, INSERT, HANDOFF |
-| `{{feedback.text}}` | Feedback text content |
-| `{{conversationId.referenceId}}` | Conversation reference ID |
-| `{{settings.key}}` | App settings values |
-| `{{organizationId}}` | Maven organization ID |
-| `{{agentId}}` | Maven agent ID |
+---
 
-## Webhook Configuration Schema
+## Examples
 
-```typescript
-interface WebhookConfig {
-  name: string;                    // Unique identifier
-  description: string;             // Guides LLM or documents the trigger
-  triggerMode: 'llm_action' | 'event_trigger';
-  eventType?: string;              // Required for event_trigger mode
-  url: string;                     // HTTP endpoint
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  headers?: Record<string, string>;
-  bodyTemplate?: string;           // Request body with {{variables}}
-  userFormParameters?: Array<{     // Only for llm_action mode
-    id: string;
-    label: string;
-    description?: string;
-    required?: boolean;
-  }>;
+### Example 1: Send Feedback to Analytics (Event Trigger)
+
+Automatically send all feedback to your analytics endpoint.
+
+| Field | Value |
+|-------|-------|
+| Name | `send_feedback_analytics` |
+| Description | `Send all user feedback to analytics pipeline` |
+| Trigger Mode | `event_trigger` |
+| Event Type | `feedback_created` |
+| URL | `https://analytics.example.com/feedback` |
+| Method | `POST` |
+| API Key | `your-analytics-api-key` |
+| Headers | `{"Authorization": "Bearer {{webhook.apiKey}}", "Content-Type": "application/json"}` |
+| Body Template | See below |
+
+```json
+{
+  "feedback_type": "{{feedback.type}}",
+  "feedback_text": "{{feedback.text}}",
+  "conversation_id": "{{conversationId.referenceId}}",
+  "timestamp": "{{feedback.createdAt}}"
 }
 ```
 
-## Development
+---
 
-```bash
-# Install dependencies
-pnpm install
+### Example 2: Create JIRA Ticket (LLM Action)
 
-# Run development server
-pnpm dev
+Let the AI create support tickets when users have unresolved issues.
 
-# Build for production
-pnpm build
+| Field | Value |
+|-------|-------|
+| Name | `create_jira_ticket` |
+| Description | `Create a JIRA support ticket. Use when the user has an issue that needs human follow-up or escalation.` |
+| Trigger Mode | `llm_action` |
+| URL | `https://your-company.atlassian.net/rest/api/2/issue` |
+| Method | `POST` |
+| API Key | `your-base64-encoded-email:token` |
+| Headers | `{"Authorization": "Basic {{webhook.apiKey}}", "Content-Type": "application/json"}` |
+| Body Template | See below |
+
+```json
+{
+  "fields": {
+    "project": {"key": "SUPPORT"},
+    "summary": "{{parameters.summary}}",
+    "description": "{{parameters.description}}\n\nSubmitted by: {{user.email}}",
+    "issuetype": {"name": "Task"}
+  }
+}
 ```
 
-## License
+> **Note**: For LLM actions, users will be prompted to fill in the `summary` and `description` fields before the webhook fires.
 
-MIT
+---
 
+### Example 3: Notify Slack (LLM Action)
+
+Send messages to a Slack channel.
+
+| Field | Value |
+|-------|-------|
+| Name | `notify_slack` |
+| Description | `Send a notification to the team Slack channel. Use when the user wants to alert the team about something.` |
+| Trigger Mode | `llm_action` |
+| URL | `https://hooks.slack.com/services/YOUR/WEBHOOK/URL` |
+| Method | `POST` |
+| Headers | `{"Content-Type": "application/json"}` |
+| Body Template | See below |
+
+```json
+{
+  "text": "Message from {{user.email}}: {{parameters.message}}"
+}
+```
+
+---
+
+### Example 4: Sync Conversations to Data Warehouse (Event Trigger)
+
+Automatically sync all conversations to your data warehouse.
+
+| Field | Value |
+|-------|-------|
+| Name | `sync_conversation` |
+| Description | `Sync conversation data to warehouse` |
+| Trigger Mode | `event_trigger` |
+| Event Type | `conversation_created` |
+| URL | `https://api.example.com/ingest/conversation` |
+| Method | `POST` |
+| API Key | `your-warehouse-api-key` |
+| Headers | `{"Authorization": "Bearer {{webhook.apiKey}}", "Content-Type": "application/json"}` |
+| Body Template | See below |
+
+```json
+{
+  "conversation_id": "{{conversationId.referenceId}}",
+  "organization_id": "{{organizationId}}",
+  "agent_id": "{{agentId}}",
+  "source": "maven"
+}
+```
+
+---
+
+## Event Types
+
+For event triggers, choose which Maven event fires the webhook:
+
+| Event Type | Fires When | Available Data |
+|------------|------------|----------------|
+| `feedback_created` | User gives feedback (thumbs up/down) | `{{feedback.type}}`, `{{feedback.text}}`, `{{feedback.id}}` |
+| `conversation_created` | Conversation is created/updated | `{{conversationId.*}}` |
+| `event_created` | Generic event occurs | Event payload |
+| `inbox_item_created` | Inbox item is created | `{{inboxItemId.*}}` |
+
+---
+
+## Troubleshooting
+
+### Webhook not firing?
+
+1. **Check trigger mode**: LLM actions require the AI to decide to call them based on conversation context
+2. **Check event type**: Event triggers only fire on the specified event
+3. **Check logs**: Look at your agent's logs for `[HTTP Webhook]` messages
+
+### Getting errors?
+
+1. **400 Bad Request**: Check your body template is valid JSON
+2. **401 Unauthorized**: Verify your API key and Authorization header
+3. **Timeout**: Increase the timeout value for slow endpoints
+
+### Testing webhooks
+
+Use a service like [webhook.site](https://webhook.site) or [Pipedream](https://pipedream.com) to see exactly what's being sent.
+
+---
+
+## Support
+
+For questions or issues, contact Maven AGI support.
