@@ -1,0 +1,81 @@
+[
+  {
+    "key": "webhooks",
+    "type": "complexarray",
+    "displayName": "Webhooks",
+    "description": "Configure one or more webhooks to call external endpoints",
+    "fields": [
+      {
+        "key": "name",
+        "type": "text",
+        "displayName": "Name",
+        "description": "Unique identifier for this webhook (used as action/trigger name)",
+        "required": true
+      },
+      {
+        "key": "description",
+        "type": "text",
+        "displayName": "Description",
+        "description": "For LLM actions: tells the AI when to use this. For triggers: documentation."
+      },
+      {
+        "key": "triggerMode",
+        "type": "dropdown",
+        "displayName": "Trigger Mode",
+        "description": "How this webhook is triggered",
+        "dropdownOptions": ["llm_action", "event_trigger"]
+      },
+      {
+        "key": "eventType",
+        "type": "dropdown",
+        "displayName": "Event Type (for event triggers)",
+        "description": "Which Maven event fires this webhook",
+        "dropdownOptions": ["feedback_created", "conversation_created", "event_created", "inbox_item_created"]
+      },
+      {
+        "key": "url",
+        "type": "text",
+        "displayName": "URL",
+        "description": "HTTP endpoint URL",
+        "required": true
+      },
+      {
+        "key": "method",
+        "type": "dropdown",
+        "displayName": "HTTP Method",
+        "dropdownOptions": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+      },
+      {
+        "key": "apiKey",
+        "type": "text",
+        "displayName": "API Key",
+        "description": "API key for this webhook. Use {{webhook.apiKey}} in headers or body.",
+        "visibility": "HIDDEN"
+      },
+      {
+        "key": "headers",
+        "type": "multiline",
+        "displayName": "Headers (JSON)",
+        "description": "HTTP headers as JSON, e.g. {\"Authorization\": \"Bearer {{webhook.apiKey}}\"}"
+      },
+      {
+        "key": "bodyTemplate",
+        "type": "multiline",
+        "displayName": "Body Template",
+        "description": "Request body with {{variable}} interpolation. Available: {{user.email}}, {{parameters.*}}, {{webhook.apiKey}}"
+      },
+      {
+        "key": "timeout",
+        "type": "number",
+        "displayName": "Timeout (ms)",
+        "description": "Request timeout in milliseconds (default: 30000)"
+      }
+    ]
+  },
+  {
+    "key": "timeout",
+    "type": "number",
+    "displayName": "Default Timeout (ms)",
+    "description": "Default request timeout for all webhooks (default: 30000)"
+  }
+]

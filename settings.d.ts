@@ -42,6 +42,12 @@ declare global {
      * Default: uses settings.timeout or 30000ms
      */
     timeout?: number;
+    
+    /**
+     * API key for this specific webhook.
+     * Available as {{webhook.apiKey}} in headers and body templates.
+     */
+    apiKey?: string;
   }
 
   interface AppSettings {

@@ -272,6 +272,10 @@ export default {
       settings,
       conversationId,
       metadata: conversationMetadata,
+      webhook: {
+        apiKey: webhook.apiKey || "",
+        name: webhook.name,
+      },
     };
 
     return makeWebhookRequest(webhook, context, settings);
@@ -319,7 +323,11 @@ export default {
         console.log(
           `[HTTP Webhook] Firing feedback trigger: ${webhook.name}`
         );
-        await makeWebhookRequest(webhook, context, settings);
+        const webhookContext = {
+          ...context,
+          webhook: { apiKey: webhook.apiKey || "", name: webhook.name },
+        };
+        await makeWebhookRequest(webhook, webhookContext, settings);
       }
     }
   },
@@ -361,7 +369,11 @@ export default {
         console.log(
           `[HTTP Webhook] Firing conversation trigger: ${webhook.name}`
         );
-        await makeWebhookRequest(webhook, context, settings);
+        const webhookContext = {
+          ...context,
+          webhook: { apiKey: webhook.apiKey || "", name: webhook.name },
+        };
+        await makeWebhookRequest(webhook, webhookContext, settings);
       }
     }
   },
@@ -399,7 +411,11 @@ export default {
 
     for (const webhook of eventWebhooks) {
       console.log(`[HTTP Webhook] Firing event trigger: ${webhook.name}`);
-      await makeWebhookRequest(webhook, context, settings);
+      const webhookContext = {
+        ...context,
+        webhook: { apiKey: webhook.apiKey || "", name: webhook.name },
+      };
+      await makeWebhookRequest(webhook, webhookContext, settings);
     }
   },
 
@@ -440,7 +456,11 @@ export default {
         console.log(
           `[HTTP Webhook] Firing inbox item trigger: ${webhook.name}`
         );
-        await makeWebhookRequest(webhook, context, settings);
+        const webhookContext = {
+          ...context,
+          webhook: { apiKey: webhook.apiKey || "", name: webhook.name },
+        };
+        await makeWebhookRequest(webhook, webhookContext, settings);
       }
     }
   },
