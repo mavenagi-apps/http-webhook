@@ -280,7 +280,7 @@ describe('Tealium Use Cases', () => {
         'Authorization': 'Bearer {{settings.gleanApiKey}}',
       },
       bodyTemplate: JSON.stringify({
-        agent_id: '470c92731a2848279389010d08a955400X',
+        agent_id: 'test-glean-agent-id',
         input: '{{parameters.request}}',
         user_email: '{{user.email}}',
       }),
@@ -307,7 +307,7 @@ describe('Tealium Use Cases', () => {
           request: 'Generate the monthly ticket review report for December 2025',
         },
         settings: {
-          gleanApiKey: 'qV5196ki+6imZmEkJxCBSVDdKmUlcZRd2WJL5zal0/X=',
+          gleanApiKey: 'test-glean-api-key',
           webhooks: [gleanWebhook],
         },
       });
@@ -317,14 +317,14 @@ describe('Tealium Use Cases', () => {
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
-            'Authorization': 'Bearer qV5196ki+6imZmEkJxCBSVDdKmUlcZRd2WJL5zal0/X=',
+            'Authorization': 'Bearer test-glean-api-key',
           }),
         })
       );
 
       const callArgs = mockFetch.mock.calls[0][1];
       const body = JSON.parse(callArgs.body);
-      expect(body.agent_id).toBe('470c92731a2848279389010d08a955400X');
+      expect(body.agent_id).toBe('test-glean-agent-id');
       expect(body.input).toBe('Generate the monthly ticket review report for December 2025');
       expect(body.user_email).toBe('user@tealium.com');
 
