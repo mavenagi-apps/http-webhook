@@ -34,6 +34,14 @@ declare global {
       description?: string;
       required?: boolean;
     }>;
+    
+    /** 
+     * Per-webhook timeout in milliseconds.
+     * Overrides the global timeout setting.
+     * Useful for slow endpoints like Glean agent /wait calls.
+     * Default: uses settings.timeout or 30000ms
+     */
+    timeout?: number;
   }
 
   interface AppSettings {

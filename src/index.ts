@@ -62,14 +62,17 @@ async function makeWebhookRequest(
       ? interpolate(webhook.bodyTemplate, context)
       : undefined;
 
-  console.log(`[HTTP Webhook] ${webhook.method} ${url}`);
+  // Use per-webhook timeout if specified, otherwise fall back to global timeout
+  const timeout = webhook.timeout ?? settings.timeout ?? 30000;
+
+  console.log(`[HTTP Webhook] ${webhook.method} ${url} (timeout: ${timeout}ms)`);
 
   try {
     const response = await fetch(url, {
       method: webhook.method,
       headers,
       body,
-      signal: AbortSignal.timeout(settings.timeout || 30000),
+      signal: AbortSignal.timeout(timeout),
     });
 
     const responseText = await response.text();
