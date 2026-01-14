@@ -21,8 +21,8 @@ declare global {
     /** HTTP method */
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
     
-    /** HTTP headers (supports {{settings.*}} interpolation) */
-    headers?: Record<string, string>;
+    /** HTTP headers (supports {{settings.*}} interpolation). May be JSON string from form. */
+    headers?: Record<string, string> | string;
     
     /** Request body template with {{variable}} interpolation */
     bodyTemplate?: string;
@@ -48,8 +48,8 @@ declare global {
     /** Array of webhook configurations */
     webhooks: WebhookConfig[];
     
-    /** Default headers applied to all webhooks */
-    defaultHeaders?: Record<string, string>;
+    /** Default headers applied to all webhooks. May be JSON string from form. */
+    defaultHeaders?: Record<string, string> | string;
     
     /** Request timeout in milliseconds (default: 30000) */
     timeout?: number;

@@ -37,6 +37,23 @@ const EVENT_TYPE_TO_TRIGGER_TYPE: Record<string, MavenAGI.EventTriggerType> = {
 };
 
 /**
+ * Parse headers from string (JSON) or object format
+ * The form may return headers as a JSON string that needs parsing
+ */
+function parseHeaders(headers: string | Record<string, string> | undefined): Record<string, string> {
+  if (!headers) return {};
+  if (typeof headers === 'string') {
+    try {
+      return JSON.parse(headers);
+    } catch {
+      console.warn('[HTTP Webhook] Failed to parse headers JSON:', headers);
+      return {};
+    }
+  }
+  return headers;
+}
+
+/**
  * Make an HTTP request based on webhook configuration
  */
 async function makeWebhookRequest(
@@ -47,11 +64,15 @@ async function makeWebhookRequest(
   // Build URL with interpolation
   const url = interpolate(webhook.url, context);
 
-  // Merge and interpolate headers
+  // Parse and merge headers (may come as JSON string from form)
+  const webhookHeaders = parseHeaders(webhook.headers);
+  const defaultHeaders = parseHeaders(settings.defaultHeaders);
+  
+  // Interpolate headers
   const headers = interpolateHeaders(
     {
-      ...settings.defaultHeaders,
-      ...webhook.headers,
+      ...defaultHeaders,
+      ...webhookHeaders,
     },
     context
   );
