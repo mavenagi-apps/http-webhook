@@ -84,7 +84,8 @@ async function makeWebhookRequest(
       : undefined;
 
   // Use per-webhook timeout if specified, otherwise fall back to global timeout
-  const timeout = webhook.timeout ?? settings.timeout ?? 30000;
+  // Use || instead of ?? because empty form fields may come through as 0
+  const timeout = webhook.timeout || settings.timeout || 30000;
 
   console.log(`[HTTP Webhook] ${webhook.method} ${url} (timeout: ${timeout}ms)`);
 
@@ -306,15 +307,30 @@ export default {
     }
 
     for (const feedback of feedbacks) {
+      // Build a comprehensive feedback context
+      // Note: createdAt/updatedAt may not be available depending on the event payload
+      const feedbackData = feedback as Record<string, unknown>;
+      
       const context: Record<string, unknown> = {
         feedback: {
           type: feedback.type,
           text: feedback.text || "",
           id: feedback.feedbackId.referenceId,
+          feedbackId: feedback.feedbackId,
+          // Include thumbsUp for THUMBS_UP/THUMBS_DOWN feedback types
+          thumbsUp: feedback.type === "THUMBS_UP",
+          // Pass through any additional fields from the raw feedback object
+          ...(feedbackData.createdAt && { createdAt: feedbackData.createdAt }),
+          ...(feedbackData.updatedAt && { updatedAt: feedbackData.updatedAt }),
+        },
+        conversation: {
+          conversationId: feedback.conversationId,
         },
         conversationId: feedback.conversationId,
         conversationMessageId: feedback.conversationMessageId,
         settings,
+        organization: { id: organizationId },
+        agent: { id: { agentId } },
         organizationId,
         agentId,
       };
