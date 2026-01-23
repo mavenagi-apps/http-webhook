@@ -40,7 +40,6 @@ When installing the app, you'll configure one or more webhooks:
 | **API Key** | No | Secret key available as `{{webhook.apiKey}}` |
 | **Headers** | No | JSON object with HTTP headers |
 | **Body Template** | No | Request body with variable interpolation |
-| **Timeout** | No | Request timeout in milliseconds (default: 30000) |
 
 ---
 
@@ -88,8 +87,9 @@ Automatically send all feedback to your analytics endpoint.
 {
   "feedback_type": "{{feedback.type}}",
   "feedback_text": "{{feedback.text}}",
+  "feedback_id": "{{feedback.id}}",
   "conversation_id": "{{conversationId.referenceId}}",
-  "timestamp": "{{feedback.createdAt}}"
+  "agent_id": "{{agentId}}"
 }
 ```
 
@@ -199,7 +199,7 @@ For event triggers, choose which Maven event fires the webhook:
 
 1. **400 Bad Request**: Check your body template is valid JSON
 2. **401 Unauthorized**: Verify your API key and Authorization header
-3. **Timeout**: Increase the timeout value for slow endpoints
+3. **Timeout**: The default timeout is 60 seconds - ensure your endpoint responds within that time
 
 ### Testing webhooks
 
