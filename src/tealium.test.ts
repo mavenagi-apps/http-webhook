@@ -402,16 +402,11 @@ describe('Tealium Use Cases', () => {
       expect(result).toContain('aborted');
     });
 
-    it('uses per-webhook timeout for long-running Glean calls', async () => {
+    it('uses fixed 60 second timeout for Glean calls', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         text: () => Promise.resolve('{"status": "ok"}'),
       });
-
-      const gleanWithLongTimeout = {
-        ...gleanWebhook,
-        timeout: 120000, // 2 minutes specifically for this webhook
-      };
 
       await app.executeAction({
         ...baseUserParams,
@@ -421,16 +416,14 @@ describe('Tealium Use Cases', () => {
         },
         settings: {
           gleanApiKey: 'test-key',
-          timeout: 30000, // Global timeout is 30s
-          webhooks: [gleanWithLongTimeout],
+          webhooks: [gleanWebhook],
         },
       });
 
-      // The request should use the webhook-specific timeout
-      // We can't directly inspect AbortSignal timeout, but we verify the call succeeded
+      // The request should use the fixed 60 second timeout
       expect(mockFetch).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('timeout: 120000ms')
+        expect.stringContaining('timeout: 60000ms')
       );
     });
   });

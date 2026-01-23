@@ -35,13 +35,6 @@ declare global {
       required?: boolean;
     }>;
     
-    /** 
-     * Timeout in milliseconds.
-     * Useful for slow endpoints that need more time.
-     * Default: 30000ms (30 seconds)
-     */
-    timeout?: number;
-    
     /**
      * API key for this specific webhook.
      * Available as {{webhook.apiKey}} in headers and body templates.

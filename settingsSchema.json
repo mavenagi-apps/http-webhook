@@ -63,12 +63,6 @@
         "type": "multiline",
         "displayName": "Body Template",
         "description": "Request body with {{variable}} interpolation. Available: {{user.email}}, {{parameters.*}}, {{webhook.apiKey}}"
-      },
-      {
-        "key": "timeout",
-        "type": "number",
-        "displayName": "Timeout (ms)",
-        "description": "Optional. Request timeout in milliseconds. Leave empty to use default (30 seconds)."
       }
     ]
   }
