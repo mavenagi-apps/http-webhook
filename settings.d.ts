@@ -36,10 +36,9 @@ declare global {
     }>;
     
     /** 
-     * Per-webhook timeout in milliseconds.
-     * Overrides the global timeout setting.
-     * Useful for slow endpoints like Glean agent /wait calls.
-     * Default: uses settings.timeout or 30000ms
+     * Timeout in milliseconds.
+     * Useful for slow endpoints that need more time.
+     * Default: 30000ms (30 seconds)
      */
     timeout?: number;
     
@@ -56,9 +55,6 @@ declare global {
     
     /** Default headers applied to all webhooks. May be JSON string from form. */
     defaultHeaders?: Record<string, string> | string;
-    
-    /** Request timeout in milliseconds (default: 30000) */
-    timeout?: number;
     
     /** API keys and secrets for {{settings.*}} interpolation */
     [key: string]: unknown;

@@ -83,9 +83,9 @@ async function makeWebhookRequest(
       ? interpolate(webhook.bodyTemplate, context)
       : undefined;
 
-  // Use per-webhook timeout if specified, otherwise fall back to global timeout
+  // Use webhook timeout if specified, otherwise default to 30 seconds
   // Use || instead of ?? because empty form fields may come through as 0
-  const timeout = webhook.timeout || settings.timeout || 30000;
+  const timeout = webhook.timeout || 30000;
 
   console.log(`[HTTP Webhook] ${webhook.method} ${url} (timeout: ${timeout}ms)`);
 

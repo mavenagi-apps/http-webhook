@@ -68,14 +68,8 @@
         "key": "timeout",
         "type": "number",
         "displayName": "Timeout (ms)",
-        "description": "Request timeout in milliseconds (default: 30000)"
+        "description": "Optional. Request timeout in milliseconds. Leave empty to use default (30 seconds)."
       }
     ]
-  },
-  {
-    "key": "timeout",
-    "type": "number",
-    "displayName": "Default Timeout (ms)",
-    "description": "Default request timeout for all webhooks (default: 30000)"
   }
 ]
