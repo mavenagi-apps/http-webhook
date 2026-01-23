@@ -307,22 +307,23 @@ export default {
     }
 
     for (const feedback of feedbacks) {
-      // Build a comprehensive feedback context
-      // Note: createdAt/updatedAt may not be available depending on the event payload
-      const feedbackData = feedback as Record<string, unknown>;
+      // Build feedback object with all available fields
+      const feedbackObj: Record<string, unknown> = {
+        type: feedback.type,
+        text: feedback.text || "",
+        id: feedback.feedbackId.referenceId,
+        feedbackId: feedback.feedbackId,
+        // Include thumbsUp for THUMBS_UP/THUMBS_DOWN feedback types
+        thumbsUp: feedback.type === "THUMBS_UP",
+      };
+      
+      // Add timestamp fields if they exist on the raw object
+      const rawFeedback = feedback as unknown as Record<string, unknown>;
+      if (rawFeedback.createdAt) feedbackObj.createdAt = rawFeedback.createdAt;
+      if (rawFeedback.updatedAt) feedbackObj.updatedAt = rawFeedback.updatedAt;
       
       const context: Record<string, unknown> = {
-        feedback: {
-          type: feedback.type,
-          text: feedback.text || "",
-          id: feedback.feedbackId.referenceId,
-          feedbackId: feedback.feedbackId,
-          // Include thumbsUp for THUMBS_UP/THUMBS_DOWN feedback types
-          thumbsUp: feedback.type === "THUMBS_UP",
-          // Pass through any additional fields from the raw feedback object
-          ...(feedbackData.createdAt && { createdAt: feedbackData.createdAt }),
-          ...(feedbackData.updatedAt && { updatedAt: feedbackData.updatedAt }),
-        },
+        feedback: feedbackObj,
         conversation: {
           conversationId: feedback.conversationId,
         },
