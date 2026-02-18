@@ -100,11 +100,5 @@
         ]
       }
     ]
-  },
-  {
-    "key": "defaultHeaders",
-    "type": "multiline",
-    "displayName": "Default Headers (JSON)",
-    "description": "Headers applied to ALL webhooks. JSON format, e.g. {\"X-Source\": \"maven\"}. Per-webhook headers override these."
   }
 ]
