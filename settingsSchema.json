@@ -63,41 +63,6 @@
         "type": "multiline",
         "displayName": "Body Template",
         "description": "Request body with {{variable}} interpolation. Available: {{user.email}}, {{parameters.*}}, {{webhook.apiKey}}"
-      },
-      {
-        "key": "userFormParameters",
-        "type": "complexarray",
-        "displayName": "User Form Parameters (LLM actions only)",
-        "description": "Form fields shown to the user before the webhook fires. Values are available as {{parameters.fieldId}}.",
-        "fields": [
-          {
-            "key": "id",
-            "type": "text",
-            "displayName": "Field ID",
-            "description": "Unique identifier used in {{parameters.fieldId}}",
-            "required": true
-          },
-          {
-            "key": "label",
-            "type": "text",
-            "displayName": "Label",
-            "description": "Display label shown to the user",
-            "required": true
-          },
-          {
-            "key": "description",
-            "type": "text",
-            "displayName": "Description",
-            "description": "Help text for the field"
-          },
-          {
-            "key": "required",
-            "type": "dropdown",
-            "displayName": "Required",
-            "description": "Whether this field must be filled in",
-            "dropdownOptions": ["true", "false"]
-          }
-        ]
       }
     ]
   }
