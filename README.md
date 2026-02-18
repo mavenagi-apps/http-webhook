@@ -25,21 +25,28 @@ This app supports two trigger modes:
 
 ## Configuration
 
-When installing the app, you'll configure one or more webhooks:
+When installing the app, you'll configure one or more webhooks.
+
+### Global Settings
+
+| Field | Description |
+|-------|-------------|
+| **Default Headers (JSON)** | Headers applied to ALL webhooks. JSON format, e.g. `{"X-Source": "maven"}`. Per-webhook headers override these. |
 
 ### Webhook Fields
 
 | Field | Required | Description |
 |-------|----------|-------------|
 | **Name** | Yes | Unique identifier (e.g., `send_to_slack`) |
-| **Description** | Yes | For LLM actions: tells AI when to use this webhook |
+| **Description** | Recommended | For LLM actions: tells AI when to use this webhook. A default is generated if omitted. |
 | **Trigger Mode** | Yes | `llm_action` or `event_trigger` |
 | **Event Type** | For triggers | Which event fires this webhook |
 | **URL** | Yes | The HTTP endpoint to call |
 | **HTTP Method** | Yes | GET, POST, PUT, PATCH, or DELETE |
 | **API Key** | No | Secret key available as `{{webhook.apiKey}}` |
-| **Headers** | No | JSON object with HTTP headers |
+| **Headers** | No | JSON object with HTTP headers. `Content-Type: application/json` is added automatically when a body is present and no Content-Type is set. |
 | **Body Template** | No | Request body with variable interpolation |
+| **User Form Parameters** | No | Form fields shown to the user before an LLM action fires. Values available as `{{parameters.fieldId}}`. |
 
 ---
 
@@ -59,6 +66,7 @@ Use `{{variable}}` syntax in your URL, headers, and body template:
 | `{{feedback.type}}` | Feedback Triggers | THUMBS_UP, THUMBS_DOWN, INSERT, HANDOFF |
 | `{{feedback.text}}` | Feedback Triggers | Feedback comment text |
 | `{{feedback.id}}` | Feedback Triggers | Feedback ID |
+| `{{feedback.thumbsUp}}` | Feedback Triggers | `true` or `false` |
 | `{{conversationId.referenceId}}` | All | Conversation ID |
 | `{{organizationId}}` | All | Organization ID |
 | `{{agentId}}` | All | Agent ID |
@@ -184,6 +192,14 @@ For event triggers, choose which Maven event fires the webhook:
 | `conversation_created` | Conversation is created/updated | `{{conversationId.*}}` |
 | `event_created` | Generic event occurs | Event payload |
 | `inbox_item_created` | Inbox item is created | `{{inboxItemId.*}}` |
+
+---
+
+## Behavior Notes
+
+- **Auto Content-Type**: When a body template is present and no `Content-Type` header is configured, `Content-Type: application/json` is added automatically.
+- **Conversation deduplication**: For `conversation_created` event triggers, rapid duplicate calls for the same conversation are deduplicated (5-second window). This prevents double-firing when Maven sends both created and updated events.
+- **LLM action responses**: Successful webhook responses are returned to the AI as `Successfully executed webhook "name". Response: ...`, giving the LLM clear confirmation to relay to the user.
 
 ---
 

@@ -28,13 +28,130 @@ interface Feedback {
   conversationMessageId: EntityId;
   type: "THUMBS_UP" | "THUMBS_DOWN" | "INSERT" | "HANDOFF";
   text?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Map event types to Maven trigger types
 const EVENT_TYPE_TO_TRIGGER_TYPE: Record<string, MavenAGI.EventTriggerType> = {
   feedback_created: MavenAGI.EventTriggerType.FeedbackCreated,
   conversation_created: MavenAGI.EventTriggerType.ConversationCreated,
+  event_created: MavenAGI.EventTriggerType.EventCreated,
+  inbox_item_created: MavenAGI.EventTriggerType.InboxItemCreated,
 };
+
+// Request timeout for all webhook calls
+const REQUEST_TIMEOUT_MS = 60000;
+
+// Hostnames and IP patterns that should not be used as webhook targets (SSRF protection)
+const BLOCKED_HOSTNAMES = new Set([
+  'localhost',
+  '127.0.0.1',
+  '0.0.0.0',
+  '[::1]',
+  'metadata.google.internal',
+]);
+
+const PRIVATE_IP_PATTERNS = [
+  /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/,       // 10.0.0.0/8
+  /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/, // 172.16.0.0/12
+  /^192\.168\.\d{1,3}\.\d{1,3}$/,           // 192.168.0.0/16
+  /^169\.254\.\d{1,3}\.\d{1,3}$/,           // Link-local / cloud metadata
+];
+
+/**
+ * Validate that a webhook URL does not target internal or private addresses.
+ * Throws if the URL is blocked. Skipped in test environments to allow localhost integration tests.
+ */
+function validateUrl(url: string): void {
+  if (process.env.NODE_ENV === 'test') return;
+
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+
+    if (BLOCKED_HOSTNAMES.has(hostname)) {
+      throw new Error(`Webhook URL targets a blocked host: ${hostname}`);
+    }
+
+    for (const pattern of PRIVATE_IP_PATTERNS) {
+      if (pattern.test(hostname)) {
+        throw new Error(`Webhook URL targets a private IP range: ${hostname}`);
+      }
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Webhook URL')) {
+      throw error;
+    }
+    // URL parsing failed — let fetch handle the error
+  }
+}
+
+/**
+ * Redact query parameters from a URL for safe logging.
+ * Prevents API keys in query strings from appearing in logs.
+ */
+function redactUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.search) {
+      return `${parsed.origin}${parsed.pathname}?[REDACTED]`;
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Build the webhook-specific context by merging base context with webhook metadata.
+ */
+function buildWebhookContext(
+  context: Record<string, unknown>,
+  webhook: WebhookConfig
+): Record<string, unknown> {
+  return {
+    ...context,
+    webhook: { apiKey: webhook.apiKey || "", name: webhook.name },
+  };
+}
+
+// Deduplication cache for event triggers.
+// Prevents double-firing when conversationCreatedOrUpdated is called for both create and update events.
+// NOTE: This is best-effort in serverless environments — the in-memory Map is not shared across
+// cold starts or concurrent instances. It reliably catches the common case of rapid create+update
+// events on the same warm instance.
+const DEDUP_WINDOW_MS = 5000;
+const recentlyProcessed = new Map<string, number>();
+
+/**
+ * Check if an event should be processed based on deduplication window.
+ * Returns true if the event should be processed, false if it's a duplicate.
+ */
+function shouldProcess(key: string): boolean {
+  const now = Date.now();
+  const lastProcessed = recentlyProcessed.get(key);
+
+  if (lastProcessed && now - lastProcessed < DEDUP_WINDOW_MS) {
+    return false;
+  }
+
+  recentlyProcessed.set(key, now);
+
+  // Cleanup entries older than 2x the window
+  for (const [k, v] of recentlyProcessed) {
+    if (now - v > DEDUP_WINDOW_MS * 2) {
+      recentlyProcessed.delete(k);
+    }
+  }
+
+  return true;
+}
+
+/** Exported for testing only */
+export function _resetDedupCache() {
+  recentlyProcessed.clear();
+}
 
 /**
  * Parse headers from string (JSON) or object format
@@ -64,6 +181,9 @@ async function makeWebhookRequest(
   // Build URL with interpolation
   const url = interpolate(webhook.url, context);
 
+  // SSRF protection: reject requests to internal/private addresses
+  validateUrl(url);
+
   // Parse and merge headers (may come as JSON string from form)
   const webhookHeaders = parseHeaders(webhook.headers);
   const defaultHeaders = parseHeaders(settings.defaultHeaders);
@@ -83,17 +203,19 @@ async function makeWebhookRequest(
       ? interpolate(webhook.bodyTemplate, context)
       : undefined;
 
-  // Fixed 60 second timeout
-  const timeout = 60000;
+  // Auto-add Content-Type: application/json when body is present and no Content-Type is configured
+  if (body && !Object.keys(headers).some(k => k.toLowerCase() === 'content-type')) {
+    headers['Content-Type'] = 'application/json';
+  }
 
-  console.log(`[HTTP Webhook] ${webhook.method} ${url} (timeout: ${timeout}ms)`);
+  console.log(`[HTTP Webhook] ${webhook.method} ${redactUrl(url)} (timeout: ${REQUEST_TIMEOUT_MS}ms)`);
 
   try {
     const response = await fetch(url, {
       method: webhook.method,
       headers,
       body,
-      signal: AbortSignal.timeout(timeout),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     const responseText = await response.text();
@@ -278,7 +400,15 @@ export default {
       },
     };
 
-    return makeWebhookRequest(webhook, context, settings);
+    const result = await makeWebhookRequest(webhook, context, settings);
+
+    // Error responses pass through as-is so the LLM can report the failure
+    if (result.startsWith('Webhook failed:') || result.startsWith('Webhook error:')) {
+      return result;
+    }
+
+    // Wrap successful responses with clear context so the LLM confirms the action to the user
+    return `Successfully executed webhook "${webhook.name}". Response: ${result}`;
   },
 
   /**
@@ -306,23 +436,16 @@ export default {
     }
 
     for (const feedback of feedbacks) {
-      // Build feedback object with all available fields
-      const feedbackObj: Record<string, unknown> = {
-        type: feedback.type,
-        text: feedback.text || "",
-        id: feedback.feedbackId.referenceId,
-        feedbackId: feedback.feedbackId,
-        // Include thumbsUp for THUMBS_UP/THUMBS_DOWN feedback types
-        thumbsUp: feedback.type === "THUMBS_UP",
-      };
-      
-      // Add timestamp fields if they exist on the raw object
-      const rawFeedback = feedback as unknown as Record<string, unknown>;
-      if (rawFeedback.createdAt) feedbackObj.createdAt = rawFeedback.createdAt;
-      if (rawFeedback.updatedAt) feedbackObj.updatedAt = rawFeedback.updatedAt;
-      
       const context: Record<string, unknown> = {
-        feedback: feedbackObj,
+        feedback: {
+          type: feedback.type,
+          text: feedback.text || "",
+          id: feedback.feedbackId.referenceId,
+          feedbackId: feedback.feedbackId,
+          thumbsUp: feedback.type === "THUMBS_UP",
+          createdAt: feedback.createdAt,
+          updatedAt: feedback.updatedAt,
+        },
         conversation: {
           conversationId: feedback.conversationId,
         },
@@ -339,11 +462,7 @@ export default {
         console.log(
           `[HTTP Webhook] Firing feedback trigger: ${webhook.name}`
         );
-        const webhookContext = {
-          ...context,
-          webhook: { apiKey: webhook.apiKey || "", name: webhook.name },
-        };
-        await makeWebhookRequest(webhook, webhookContext, settings);
+        await makeWebhookRequest(webhook, buildWebhookContext(context, webhook), settings);
       }
     }
   },
@@ -374,6 +493,15 @@ export default {
     }
 
     for (const conversationId of conversations) {
+      // Deduplicate rapid create+update events for the same conversation
+      const dedupKey = `conv:${conversationId.referenceId}`;
+      if (!shouldProcess(dedupKey)) {
+        console.log(
+          `[HTTP Webhook] Skipping duplicate event for conversation: ${conversationId.referenceId}`
+        );
+        continue;
+      }
+
       const context: Record<string, unknown> = {
         conversationId,
         settings,
@@ -385,11 +513,7 @@ export default {
         console.log(
           `[HTTP Webhook] Firing conversation trigger: ${webhook.name}`
         );
-        const webhookContext = {
-          ...context,
-          webhook: { apiKey: webhook.apiKey || "", name: webhook.name },
-        };
-        await makeWebhookRequest(webhook, webhookContext, settings);
+        await makeWebhookRequest(webhook, buildWebhookContext(context, webhook), settings);
       }
     }
   },
@@ -427,11 +551,7 @@ export default {
 
     for (const webhook of eventWebhooks) {
       console.log(`[HTTP Webhook] Firing event trigger: ${webhook.name}`);
-      const webhookContext = {
-        ...context,
-        webhook: { apiKey: webhook.apiKey || "", name: webhook.name },
-      };
-      await makeWebhookRequest(webhook, webhookContext, settings);
+      await makeWebhookRequest(webhook, buildWebhookContext(context, webhook), settings);
     }
   },
 
@@ -472,11 +592,7 @@ export default {
         console.log(
           `[HTTP Webhook] Firing inbox item trigger: ${webhook.name}`
         );
-        const webhookContext = {
-          ...context,
-          webhook: { apiKey: webhook.apiKey || "", name: webhook.name },
-        };
-        await makeWebhookRequest(webhook, webhookContext, settings);
+        await makeWebhookRequest(webhook, buildWebhookContext(context, webhook), settings);
       }
     }
   },

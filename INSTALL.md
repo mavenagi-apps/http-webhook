@@ -14,17 +14,26 @@ Send HTTP requests to external endpoints from your Maven agent. Configure webhoo
 
 ## Configuration Fields
 
+### Global Settings
+
+| Field | Description |
+|-------|-------------|
+| **Default Headers (JSON)** | Headers applied to ALL webhooks. Per-webhook headers override these. |
+
+### Webhook Settings
+
 | Field | Required | Description |
 |-------|----------|-------------|
 | **Name** | Yes | Unique identifier using only letters, numbers, dashes, underscores (e.g., `send-to-slack`) |
-| **Description** | Yes | For LLM actions: tells the AI when to use this webhook |
+| **Description** | Recommended | For LLM actions: tells the AI when to use this webhook. A default is generated if omitted. |
 | **Trigger Mode** | Yes | `llm_action` (AI decides) or `event_trigger` (automatic) |
 | **Event Type** | For triggers | Which Maven event fires this webhook |
 | **URL** | Yes | The HTTP endpoint to call |
 | **HTTP Method** | Yes | GET, POST, PUT, PATCH, or DELETE |
 | **API Key** | No | Secret key available as `{{webhook.apiKey}}` in templates |
-| **Headers** | No | JSON object, e.g., `{"Authorization": "Bearer {{webhook.apiKey}}"}` |
+| **Headers** | No | JSON object, e.g., `{"Authorization": "Bearer {{webhook.apiKey}}"}`. `Content-Type: application/json` is added automatically when a body is present. |
 | **Body Template** | No | Request body with `{{variable}}` interpolation |
+| **User Form Parameters** | No | Form fields shown to the user before an LLM action fires (id, label, description, required) |
 
 ---
 

@@ -1,5 +1,11 @@
 [
   {
+    "key": "defaultHeaders",
+    "type": "multiline",
+    "displayName": "Default Headers (JSON)",
+    "description": "Headers applied to ALL webhooks. JSON format, e.g. {\"X-Source\": \"maven\"}. Per-webhook headers override these."
+  },
+  {
     "key": "webhooks",
     "type": "complexarray",
     "displayName": "Webhooks",
@@ -16,7 +22,7 @@
         "key": "description",
         "type": "text",
         "displayName": "Description",
-        "description": "For LLM actions: tells the AI when to use this. For triggers: documentation."
+        "description": "For LLM actions: tells the AI when to use this. For triggers: documentation. Recommended but optional — a default is generated if omitted."
       },
       {
         "key": "triggerMode",
@@ -36,7 +42,7 @@
         "key": "url",
         "type": "text",
         "displayName": "URL",
-        "description": "HTTP endpoint URL",
+        "description": "HTTP endpoint URL. Supports {{variable}} interpolation.",
         "required": true
       },
       {
@@ -56,13 +62,48 @@
         "key": "headers",
         "type": "multiline",
         "displayName": "Headers (JSON)",
-        "description": "HTTP headers as JSON, e.g. {\"Authorization\": \"Bearer {{webhook.apiKey}}\"}"
+        "description": "HTTP headers as JSON, e.g. {\"Authorization\": \"Bearer {{webhook.apiKey}}\"}. Content-Type: application/json is added automatically when a body is present."
       },
       {
         "key": "bodyTemplate",
         "type": "multiline",
         "displayName": "Body Template",
         "description": "Request body with {{variable}} interpolation. Available: {{user.email}}, {{parameters.*}}, {{webhook.apiKey}}"
+      },
+      {
+        "key": "userFormParameters",
+        "type": "complexarray",
+        "displayName": "User Form Parameters (LLM actions only)",
+        "description": "Form fields shown to the user before the webhook fires. Values are available as {{parameters.fieldId}}.",
+        "fields": [
+          {
+            "key": "id",
+            "type": "text",
+            "displayName": "Field ID",
+            "description": "Unique identifier used in {{parameters.fieldId}}",
+            "required": true
+          },
+          {
+            "key": "label",
+            "type": "text",
+            "displayName": "Label",
+            "description": "Display label shown to the user",
+            "required": true
+          },
+          {
+            "key": "description",
+            "type": "text",
+            "displayName": "Description",
+            "description": "Help text for the field"
+          },
+          {
+            "key": "required",
+            "type": "dropdown",
+            "displayName": "Required",
+            "description": "Whether this field must be filled in",
+            "dropdownOptions": ["true", "false"]
+          }
+        ]
       }
     ]
   }

@@ -287,7 +287,6 @@ describe('Tealium Use Cases', () => {
       userFormParameters: [
         { id: 'request', label: 'Request', description: 'What would you like the Glean agent to do?', required: true },
       ],
-      timeout: 120000, // 2 minutes for long-running agent
     };
 
     it('calls Glean agent with request and user email', async () => {
@@ -350,12 +349,11 @@ describe('Tealium Use Cases', () => {
         },
         settings: {
           gleanApiKey: 'test-key',
-          timeout: 120000, // Extended timeout for Glean
           webhooks: [gleanWebhook],
         },
       });
 
-      // Verify the request was made with extended timeout
+      // Verify the request was made with AbortSignal timeout
       const callArgs = mockFetch.mock.calls[0][1];
       expect(callArgs.signal).toBeDefined();
     });

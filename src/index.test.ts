@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Use vi.hoisted to properly hoist mocks
 const mocks = vi.hoisted(() => {
@@ -549,7 +549,7 @@ describe('executeAction', () => {
     expect(result).toContain('Webhook error: Network error');
   });
 
-  it('respects custom timeout', async () => {
+  it('includes AbortSignal timeout on requests', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: true,
       text: () => Promise.resolve('OK'),
@@ -561,7 +561,6 @@ describe('executeAction', () => {
       actionId: 'slow_request',
       parameters: {},
       settings: {
-        timeout: 60000, // 60 seconds
         webhooks: [{
           name: 'slow_request',
           description: 'Slow request',
@@ -692,6 +691,138 @@ describe('Event Handlers', () => {
           body: '{"conversationId": "conv-123"}',
         })
       );
+    });
+  });
+
+  describe('eventCreatedOrUpdated', () => {
+    it('fires webhook for event_created trigger', async () => {
+      await app.eventCreatedOrUpdated({
+        ...baseParams,
+        settings: {
+          webhooks: [{
+            name: 'event_sync',
+            description: 'Sync events',
+            url: 'http://api.example.com/events',
+            method: 'POST',
+            triggerMode: 'event_trigger',
+            eventType: 'event_created',
+            bodyTemplate: '{"org": "{{organizationId}}"}',
+          }],
+        },
+        events: [{ id: 'evt-1', type: 'custom_event' }],
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://api.example.com/events',
+        expect.objectContaining({
+          method: 'POST',
+          body: '{"org": "org-123"}',
+        })
+      );
+    });
+
+    it('does not fire webhook when no event_created webhooks configured', async () => {
+      await app.eventCreatedOrUpdated({
+        ...baseParams,
+        settings: {
+          webhooks: [{
+            name: 'other_webhook',
+            description: 'Not events',
+            url: 'http://api.example.com/other',
+            method: 'POST',
+            triggerMode: 'llm_action',
+          }],
+        },
+        events: [{ id: 'evt-1' }],
+      });
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('inboxItemCreatedOrUpdated', () => {
+    it('fires webhook for inbox_item_created trigger', async () => {
+      await app.inboxItemCreatedOrUpdated({
+        ...baseParams,
+        settings: {
+          webhooks: [{
+            name: 'inbox_sync',
+            description: 'Sync inbox items',
+            url: 'http://api.example.com/inbox',
+            method: 'POST',
+            triggerMode: 'event_trigger',
+            eventType: 'inbox_item_created',
+            bodyTemplate: '{"itemId": "{{inboxItemId.referenceId}}"}',
+          }],
+        },
+        inboxItemIds: [{
+          referenceId: 'inbox-1',
+          appId: 'app-1',
+          organizationId: 'org-123',
+          agentId: 'agent-456',
+          type: 'inbox_item',
+        }],
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://api.example.com/inbox',
+        expect.objectContaining({
+          method: 'POST',
+          body: '{"itemId": "inbox-1"}',
+        })
+      );
+    });
+
+    it('fires webhook for each inbox item', async () => {
+      await app.inboxItemCreatedOrUpdated({
+        ...baseParams,
+        settings: {
+          webhooks: [{
+            name: 'inbox_sync',
+            description: 'Sync inbox items',
+            url: 'http://api.example.com/inbox',
+            method: 'POST',
+            triggerMode: 'event_trigger',
+            eventType: 'inbox_item_created',
+            bodyTemplate: '{"itemId": "{{inboxItemId.referenceId}}"}',
+          }],
+        },
+        inboxItemIds: [
+          { referenceId: 'inbox-1', appId: 'app-1', organizationId: 'org-123', agentId: 'agent-456', type: 'inbox_item' },
+          { referenceId: 'inbox-2', appId: 'app-1', organizationId: 'org-123', agentId: 'agent-456', type: 'inbox_item' },
+        ],
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+
+      const bodies = mockFetch.mock.calls.map((c: [string, RequestInit]) => JSON.parse(c[1].body as string));
+      expect(bodies[0].itemId).toBe('inbox-1');
+      expect(bodies[1].itemId).toBe('inbox-2');
+    });
+
+    it('does not fire webhook when no inbox_item_created webhooks configured', async () => {
+      await app.inboxItemCreatedOrUpdated({
+        ...baseParams,
+        settings: {
+          webhooks: [{
+            name: 'other_webhook',
+            description: 'Not inbox',
+            url: 'http://api.example.com/other',
+            method: 'POST',
+            triggerMode: 'event_trigger',
+            eventType: 'feedback_created',
+          }],
+        },
+        inboxItemIds: [{
+          referenceId: 'inbox-1',
+          appId: 'app-1',
+          organizationId: 'org-123',
+          agentId: 'agent-456',
+          type: 'inbox_item',
+        }],
+      });
+
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 });
