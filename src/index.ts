@@ -139,11 +139,11 @@ function shouldProcess(key: string): boolean {
   recentlyProcessed.set(key, now);
 
   // Cleanup entries older than 2x the window
-  for (const [k, v] of recentlyProcessed) {
+  recentlyProcessed.forEach((v, k) => {
     if (now - v > DEDUP_WINDOW_MS * 2) {
       recentlyProcessed.delete(k);
     }
-  }
+  });
 
   return true;
 }
