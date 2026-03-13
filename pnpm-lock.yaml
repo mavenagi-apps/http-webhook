@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       mavenagi:
-        specifier: ^1.0.11
-        version: 1.2.9
+        specifier: ^1.2.25
+        version: 1.2.25
       next:
         specifier: 14.2.35
         version: 14.2.35(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1394,8 +1394,8 @@ packages:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
 
-  mavenagi@1.2.9:
-    resolution: {integrity: sha512-fvTd4dOc7EWBGzL3frcI/V0CJsbyJAKRRbQAv3RtOVUF4wKTnn+sq0Z++8h4l4VDzwhqRj4FmqhlVf11HXXtyQ==}
+  mavenagi@1.2.25:
+    resolution: {integrity: sha512-eqdrIDpL5lZIoQ6h97ERYYHZcHWND4qDvMLR2HPLZwCgybxHRVigKlCpSQ5q5MhBIh6SPJfGAS5GLVf/iWTsAQ==}
     engines: {node: '>=18.0.0'}
 
   merge2@1.4.1:
@@ -1977,6 +1977,18 @@ packages:
 
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
+
+  ws@8.19.0:
+    resolution: {integrity: sha512-blAT2mjOEIi0ZzruJfIhb3nps74PRWTCz1IjglWEEpQl5XS/UNama6u2/rjFkDDouqr4L67ry+1aGIALViWjDg==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
 
   yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
@@ -3394,7 +3406,12 @@ snapshots:
 
   math-intrinsics@1.1.0: {}
 
-  mavenagi@1.2.9: {}
+  mavenagi@1.2.25:
+    dependencies:
+      ws: 8.19.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   merge2@1.4.1: {}
 
@@ -4093,5 +4110,7 @@ snapshots:
       strip-ansi: 7.1.2
 
   wrappy@1.0.2: {}
+
+  ws@8.19.0: {}
 
   yocto-queue@0.1.0: {}

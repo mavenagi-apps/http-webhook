@@ -2,35 +2,6 @@ import { MavenAGIClient } from "mavenagi";
 import * as MavenAGI from "mavenagi/api";
 import { interpolate, interpolateHeaders } from "@/lib/interpolate";
 
-// Re-export types from app-interface for event handlers
-interface EntityId {
-  referenceId: string;
-  appId: string;
-  organizationId: string;
-  agentId: string;
-  type: string;
-}
-
-interface EntityIdBase {
-  referenceId: string;
-}
-
-interface ActionUser {
-  userId?: EntityIdBase;
-  userIdentifiers: Array<{ value: string; type: "EMAIL" | "PHONE_NUMBER" }>;
-  allUserData: Record<string, Record<string, string>>;
-  defaultUserData: Record<string, string>;
-}
-
-interface Feedback {
-  feedbackId: EntityId;
-  conversationId: EntityId;
-  conversationMessageId: EntityId;
-  type: "THUMBS_UP" | "THUMBS_DOWN" | "INSERT" | "HANDOFF";
-  text?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
 
 // Map event types to Maven trigger types
 const EVENT_TYPE_TO_TRIGGER_TYPE: Record<string, MavenAGI.EventTriggerType> = {
@@ -369,8 +340,8 @@ export default {
     actionId: string;
     parameters: Record<string, unknown>;
     settings: AppSettings;
-    user: ActionUser;
-    conversationId?: EntityId | null;
+    user: MavenAGI.ActionUser;
+    conversationId?: MavenAGI.EntityId | null;
     conversationMetadata: Record<string, string>;
   }): Promise<string> {
     // Find the webhook configuration
@@ -384,10 +355,17 @@ export default {
     }
 
     // Build interpolation context
+    // Map all identifiers to camelCase keys (e.g. EMAIL → email, PHONE_NUMBER → phoneNumber)
+    const identifiers = Object.fromEntries(
+      user.userIdentifiers.map((id) => [
+        id.type.toLowerCase().replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()),
+        id.value,
+      ])
+    );
+
     const context: Record<string, unknown> = {
       user: {
-        email:
-          user.userIdentifiers.find((id) => id.type === "EMAIL")?.value || "",
+        ...identifiers,
         ...user.defaultUserData,
       },
       parameters,
@@ -423,7 +401,7 @@ export default {
     organizationId: string;
     agentId: string;
     settings: AppSettings;
-    feedbacks: Feedback[];
+    feedbacks: MavenAGI.Feedback[];
   }): Promise<void> {
     // Find webhooks configured for feedback events
     const feedbackWebhooks = settings.webhooks.filter(
@@ -444,7 +422,6 @@ export default {
           feedbackId: feedback.feedbackId,
           thumbsUp: feedback.type === "THUMBS_UP",
           createdAt: feedback.createdAt,
-          updatedAt: feedback.updatedAt,
         },
         conversation: {
           conversationId: feedback.conversationId,
@@ -479,7 +456,7 @@ export default {
     organizationId: string;
     agentId: string;
     settings: AppSettings;
-    conversations: EntityId[];
+    conversations: MavenAGI.EntityId[];
   }): Promise<void> {
     // Find webhooks configured for conversation events
     const conversationWebhooks = settings.webhooks.filter(
@@ -567,7 +544,7 @@ export default {
     organizationId: string;
     agentId: string;
     settings: AppSettings;
-    inboxItemIds: EntityId[];
+    inboxItemIds: MavenAGI.EntityId[];
   }): Promise<void> {
     // Find webhooks configured for inbox item events
     const inboxWebhooks = settings.webhooks.filter(
