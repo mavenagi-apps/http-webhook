@@ -1,0 +1,43 @@
+# Publishes this app's manifest via the org reusable workflow (mavenagi-apps/.github) — to the app
+# directory and developers-service.
+#
+# Runs on every branch: the reusable publishes whichever targets name the pushed branch, so a branch
+# list here would be a second gate that can silently disagree with the manifest. A branch no target
+# names is a no-op run.
+#
+# Publishing requires real appIds in src/manifest.ts: the platform rejects a manifest naming an app
+# that does not exist.
+name: Publish App Manifest
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - src/manifest.ts
+      - settingsSchema.json # imported by src/manifest.ts
+      - docs/**
+      - .github/workflows/publish-manifest.yml
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Load + transform but do NOT publish
+        type: boolean
+        default: true
+      target:
+        description: Manifest target key to publish. Leave blank to select by branch.
+        type: string
+        required: false
+
+jobs:
+  publish-manifest:
+    # Version comes from the reusable's `apps-core-dev-version` default. Bump it in mavenagi-apps/.github
+    # rather than pinning here — an older tool silently drops manifest fields it does not know.
+    permissions:
+      contents: read # checkout; an explicit list drops every unlisted permission
+      id-token: write # OIDC token for Maven platform calls via maven-helper /ci/manifest
+    uses: mavenagi-apps/.github/.github/workflows/publish-manifest.yml@main
+    with:
+      dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs['dry-run'] || false }}
+      target: ${{ github.event_name == 'workflow_dispatch' && inputs.target || '' }}
+    secrets:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
